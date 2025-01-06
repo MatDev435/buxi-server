@@ -5,4 +5,5 @@ export interface TransactionsRepository {
   create(
     transaction: Prisma.TransactionUncheckedCreateInput
   ): Promise<Transaction>
+  delete(id: string): Promise<void>
 }

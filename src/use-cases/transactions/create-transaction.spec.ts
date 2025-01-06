@@ -4,7 +4,7 @@ import { CreateTransactionUseCase } from './create-transaction'
 let inMemoryTransactionsRepository: InMemoryTransactionsRepository
 let sut: CreateTransactionUseCase
 
-describe('Register User Use Case', () => {
+describe('Create Transaction Use Case', () => {
   beforeEach(() => {
     inMemoryTransactionsRepository = new InMemoryTransactionsRepository()
     sut = new CreateTransactionUseCase(inMemoryTransactionsRepository)
