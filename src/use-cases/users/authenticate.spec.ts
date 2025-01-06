@@ -8,7 +8,7 @@ let inMemoryUsersRepository: InMemoryUsersRepository
 let fakeEncrypter: FakeEncrypter
 let sut: AuthenticateUseCase
 
-describe('Register User Use Case', () => {
+describe('Authenticate Use Case', () => {
   beforeEach(() => {
     inMemoryUsersRepository = new InMemoryUsersRepository()
     fakeEncrypter = new FakeEncrypter()
