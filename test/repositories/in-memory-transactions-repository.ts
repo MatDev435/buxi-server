@@ -1,5 +1,8 @@
 import { Prisma, Transaction } from '@prisma/client'
-import { TransactionsRepository } from '../../src/repositories/transactions-repository'
+import {
+  FetchByUserIdParams,
+  TransactionsRepository,
+} from '../../src/repositories/transactions-repository'
 
 export class InMemoryTransactionsRepository implements TransactionsRepository {
   public items: Transaction[] = []
@@ -12,6 +15,28 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
     }
 
     return transaction
+  }
+
+  async fetchByUserId(
+    userId: string,
+    { date, name, category }: FetchByUserIdParams
+  ): Promise<Transaction[]> {
+    const transactions = this.items.filter(item => {
+      const matchesUserId = item.ownerId === userId
+
+      const matchesDate = date
+        ? item.createdAt.toISOString().split('T')[0] ===
+          date.toISOString().split('T')[0]
+        : true
+
+      const matchesName = name ? item.name === name : true
+
+      const matchesCategory = category ? item.category === category : true
+
+      return matchesUserId && matchesDate && matchesName && matchesCategory
+    })
+
+    return transactions
   }
 
   async create(
