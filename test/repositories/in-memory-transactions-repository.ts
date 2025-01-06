@@ -3,6 +3,7 @@ import {
   FetchByUserIdParams,
   TransactionsRepository,
 } from '../../src/repositories/transactions-repository'
+import dayjs from 'dayjs'
 
 export class InMemoryTransactionsRepository implements TransactionsRepository {
   public items: Transaction[] = []
@@ -21,13 +22,15 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
     userId: string,
     { date, name, category }: FetchByUserIdParams
   ): Promise<Transaction[]> {
+    const currentMonth = dayjs().month()
+
     const transactions = this.items.filter(item => {
       const matchesUserId = item.ownerId === userId
 
       const matchesDate = date
         ? item.createdAt.toISOString().split('T')[0] ===
           date.toISOString().split('T')[0]
-        : true
+        : dayjs(item.createdAt).month() === currentMonth
 
       const matchesName = name ? item.name === name : true
 
