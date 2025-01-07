@@ -22,11 +22,13 @@ describe('Get Month Activity Use Case', () => {
   })
 
   it('should be able to get month activity', async () => {
-    vi.setSystemTime(new Date(2024, 11, 1, 0, 0, 0))
+    vi.setSystemTime(new Date(2024, 11, 4, 0, 0, 0))
 
     inMemoryTransactionsRepository.items.push(
       makeTransaction({
         ownerId: 'user-01',
+        value: new Decimal(3000),
+        type: 'income',
       })
     )
 
@@ -66,9 +68,9 @@ describe('Get Month Activity Use Case', () => {
 
     expect(data).toEqual(
       expect.arrayContaining([
-        { day: 1, value: 2000 },
-        { day: 2, value: 1500 },
-        { day: 3, value: 1600 },
+        { day: '05/12', value: 3000 },
+        { day: '01/01', value: 5000 },
+        { day: '03/01', value: 4600 },
       ])
     )
   })

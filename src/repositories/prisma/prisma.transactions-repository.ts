@@ -9,8 +9,12 @@ import {
 import { prisma } from '../../lib/prisma'
 import dayjs from 'dayjs'
 import 'dayjs/locale/pt-br'
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore'
+import IsSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 
 dayjs.locale('pt-br')
+dayjs.extend(isSameOrBefore)
+dayjs.extend(IsSameOrAfter)
 
 export class PrismaTransactionsRepository implements TransactionsRepository {
   async findById(id: string): Promise<Transaction | null> {
@@ -245,15 +249,14 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
   }
 
   async getMonthActivity(userId: string): Promise<MonthActivityResponse[]> {
-    const currentMonth = dayjs().month()
-    const currentYear = dayjs().year()
+    const today = dayjs()
+    const activityStart = today.subtract(29, 'days')
 
-    const monthTransactions = await prisma.transaction.findMany({
+    const previousTransactions = await prisma.transaction.findMany({
       where: {
         ownerId: userId,
         createdAt: {
-          gte: new Date(currentYear, currentMonth, 1),
-          lt: new Date(currentYear, currentMonth + 1, 1),
+          lt: activityStart.toDate(),
         },
       },
       select: {
@@ -263,14 +266,36 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
       },
     })
 
-    const daysInMonth = dayjs().daysInMonth()
-    let accumulatedValue = 0
+    const matchTransactions = await prisma.transaction.findMany({
+      where: {
+        ownerId: userId,
+        createdAt: {
+          gte: activityStart.toDate(),
+          lte: today.toDate(),
+        },
+      },
+      select: {
+        value: true,
+        type: true,
+        createdAt: true,
+      },
+    })
 
-    const dailyProfit: MonthActivityResponse[] = Array.from(
-      { length: daysInMonth },
+    let accumulatedValue = previousTransactions.reduce(
+      (result, transaction) =>
+        transaction.type === 'income'
+          ? result + transaction.value.toNumber()
+          : result - transaction.value.toNumber(),
+      0
+    )
+
+    const dailyTransactions: MonthActivityResponse[] = Array.from(
+      { length: 30 },
       (_, day) => {
-        const profit = monthTransactions
-          .filter(item => dayjs(item.createdAt).date() === day + 1)
+        const currentDay = activityStart.add(day, 'days')
+
+        const profit = matchTransactions
+          .filter(item => dayjs(item.createdAt).isSame(currentDay, 'day'))
           .reduce(
             (result, transaction) =>
               transaction.type === 'income'
@@ -281,11 +306,14 @@ export class PrismaTransactionsRepository implements TransactionsRepository {
 
         accumulatedValue += profit
 
-        return { day: day + 1, value: accumulatedValue }
+        return {
+          day: currentDay.format('DD/MM'),
+          value: accumulatedValue,
+        }
       }
     )
 
-    return dailyProfit
+    return dailyTransactions
   }
 
   async getYearActivity(userId: string): Promise<YearActivityResponse[]> {

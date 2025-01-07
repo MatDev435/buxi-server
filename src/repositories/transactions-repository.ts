@@ -12,7 +12,7 @@ export interface DashboardCardsResponse {
 }
 
 export interface MonthActivityResponse {
-  day: number
+  day: string
   value: number
 }
 

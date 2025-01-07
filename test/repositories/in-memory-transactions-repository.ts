@@ -8,8 +8,12 @@ import {
 } from '../../src/repositories/transactions-repository'
 import dayjs from 'dayjs'
 import 'dayjs/locale/pt-br'
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore'
+import IsSameOrAfter from 'dayjs/plugin/isSameOrAfter'
 
 dayjs.locale('pt-br')
+dayjs.extend(isSameOrBefore)
+dayjs.extend(IsSameOrAfter)
 
 export class InMemoryTransactionsRepository implements TransactionsRepository {
   public items: Transaction[] = []
@@ -189,22 +193,36 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
   }
 
   async getMonthActivity(userId: string): Promise<MonthActivityResponse[]> {
-    const currentMonth = dayjs().month()
-    const daysInMonth = dayjs().daysInMonth()
+    const today = dayjs()
+    const activityStart = today.subtract(29, 'days')
 
-    const monthTransactions = this.items.filter(
-      item =>
-        item.ownerId === userId &&
-        dayjs(item.createdAt).month() === currentMonth
+    const transactions = this.items.filter(item => item.ownerId === userId)
+
+    const previousTransactions = transactions.filter(item =>
+      dayjs(item.createdAt).isBefore(activityStart, 'day')
     )
 
-    let accumulatedValue = 0
+    const matchTransactions = transactions.filter(
+      item =>
+        dayjs(item.createdAt).isSameOrAfter(activityStart, 'day') &&
+        dayjs(item.createdAt).isSameOrBefore(today, 'day')
+    )
 
-    const dailyProfit: MonthActivityResponse[] = Array.from(
-      { length: daysInMonth },
+    let accumulatedValue = previousTransactions.reduce(
+      (result, transaction) =>
+        transaction.type === 'income'
+          ? result + transaction.value.toNumber()
+          : result - transaction.value.toNumber(),
+      0
+    )
+
+    const dailyTransactions: MonthActivityResponse[] = Array.from(
+      { length: 30 },
       (_, day) => {
-        const profit = monthTransactions
-          .filter(item => dayjs(item.createdAt).date() === day + 1)
+        const currentDay = activityStart.add(day, 'days')
+
+        const profit = matchTransactions
+          .filter(item => dayjs(item.createdAt).isSame(currentDay, 'day'))
           .reduce(
             (result, transaction) =>
               transaction.type === 'income'
@@ -215,11 +233,14 @@ export class InMemoryTransactionsRepository implements TransactionsRepository {
 
         accumulatedValue += profit
 
-        return { day: day + 1, value: accumulatedValue }
+        return {
+          day: currentDay.format('DD/MM'),
+          value: accumulatedValue,
+        }
       }
     )
 
-    return dailyProfit
+    return dailyTransactions
   }
 
   async getYearActivity(userId: string): Promise<YearActivityResponse[]> {
